@@ -273,6 +273,9 @@ else
   # Create database
   "$ORACLE_BASE"/"$CREATE_DB_FILE" "$ORACLE_SID" "$ORACLE_PDB" "$ORACLE_PWD" || exit 1;
 
+  # Save the connection details file
+  echo "$ORACLE_SID $ORACLE_PDB $ORACLE_PWD" > "$ORACLE_HOME"/password
+
   # Check whether database is successfully created
   if "$ORACLE_BASE"/"$CHECK_DB_FILE"; then
     # Create a checkpoint file if database is successfully created
