@@ -111,6 +111,8 @@ EOF
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
 ###################################
 
+echo "NO_WAIT: $1"
+
 # Only EE is supported for 19c on ARM64 platform
 if [ "$(arch)" == "aarch64" ] || [ "$(arch)" == "arm64" ]; then
   if { [ "${ORACLE_EDITION^^}" != "" ] && [ "${ORACLE_EDITION^^}" != "ENTERPRISE" ]; }; then
@@ -319,10 +321,13 @@ fi;
 
 # Exiting the script without waiting on the tail logs
 if [ "$1" = "--nowait" ]; then
+   echo "EXITING NO WAIT..."
    # Creating state-file for identifyig container of the prebuiltdb extended image
    touch "${ORACLE_BASE}/oradata/${ORACLE_SID}/.prebuiltdb"
    exit $status;
 fi
+
+echo "UNTIL THE END"
 
 # Tail on alert log and wait (otherwise container will exit)
 echo "The following output is now a tail of the alert.log:"

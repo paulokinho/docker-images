@@ -89,9 +89,7 @@ COPY $RUN_FILE $START_FILE $CREATE_DB_FILE $CREATE_OBSERVER_FILE $CONFIG_RSP $PW
 RUN chmod ug+x $INSTALL_DIR/*.sh && \
     sync && \
     $INSTALL_DIR/$CHECK_SPACE_FILE && \
-    $INSTALL_DIR/$SETUP_LINUX_FILE && \
-    rm -rf $INSTALL_DIR
-
+    $INSTALL_DIR/$SETUP_LINUX_FILE
 
 
 #############################################
@@ -100,20 +98,17 @@ RUN chmod ug+x $INSTALL_DIR/*.sh && \
 # -------------------------------------------
 #############################################
 
-FROM doctorkirk/oracle-19c AS donator
+FROM doctorkirk/oracle-19c:19.9 AS donator
 FROM base AS builder
-
-ARG DB_EDITION
 
 # Copy DB install file
 COPY --chown=oracle:dba $INSTALL_RSP $INSTALL_DB_BINARIES_FILE $INSTALL_DIR/
 COPY --chown=oracle:dba --from=donator $ORACLE_BASE $ORACLE_BASE
+COPY --chown=oracle:dba $RUN_FILE $START_FILE $CREATE_DB_FILE $CREATE_OBSERVER_FILE $PWD_FILE $USER_SCRIPTS_FILE $RELINK_BINARY_FILE $ORACLE_BASE/
 
 # Install DB software binaries
-USER oracle
-RUN chmod ug+x "$INSTALL_DIR"/*.sh && \
-    sync && \
-    "$INSTALL_DIR"/"$INSTALL_DB_BINARIES_FILE" $DB_EDITION
+USER root
+RUN chmod ug+x "$INSTALL_DIR"/*.sh && sync
 
 #############################################
 # -------------------------------------------
@@ -125,6 +120,19 @@ FROM base
 
 USER oracle
 COPY --chown=oracle:dba --from=builder $ORACLE_BASE $ORACLE_BASE
+COPY --chown=oracle:dba --from=builder $INSTALL_DIR $INSTALL_DIR/
+
+USER root
+RUN chown -R oracle:dba $INSTALL_DIR
+
+# Clean the cloned oraInventory dir
+RUN  rm -rf "$ORACLE_BASE"/oraInventory
+
+USER oracle
+ARG DB_EDITION=ee
+
+# Install DB software binaries
+RUN "$INSTALL_DIR"/"$INSTALL_DB_BINARIES_FILE" "$DB_EDITION"
 
 USER root
 RUN "$ORACLE_BASE"/oraInventory/orainstRoot.sh && \
@@ -141,7 +149,7 @@ HEALTHCHECK --interval=1m --start-period=5m --timeout=30s \
    CMD "$ORACLE_BASE/$CHECK_DB_FILE" >/dev/null || exit 1
 
 # Preinitialize the database during the build
-RUN $ORACLE_BASE/$RUN_FILE --nowait
+RUN "$ORACLE_BASE"/"$RUN_FILE" --nowait
 
 # Define default command to start Oracle Database. 
 CMD [ "/bin/bash", "-c", "exec $ORACLE_BASE/$RUN_FILE" ]
