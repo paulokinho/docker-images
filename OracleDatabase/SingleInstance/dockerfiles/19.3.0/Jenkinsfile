@@ -1,0 +1,51 @@
+pipeline {
+    agent {
+        kubernetes {
+            label 'kaniko'
+            yaml """
+kind: Pod
+metadata:
+  name: kaniko
+spec:
+  containers:
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:v1.23.2-debug
+    imagePullPolicy: Always
+    command:
+    - /busybox/cat
+    tty: true
+    volumeMounts:
+      - name: jenkins-docker-cfg
+        mountPath: /kaniko/.docker
+  volumes:
+  - name: jenkins-docker-cfg
+    projected:
+      sources:
+      - secret:
+          name: registry-credentials
+          items:
+            - key: .dockerconfigjson
+              path: config.json
+"""
+        }
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/paulokinho/docker-images.git'
+            }
+        }
+        stage('Make Image') {
+            environment {
+                PATH        = "/busybox:$PATH"
+            }
+            steps {
+                container(name: 'kaniko', shell: '/busybox/sh') {
+                    sh '''#!/busybox/sh
+                    /kaniko/executor -f OracleDatabase/SingleInstance/dockerfiles/19.3.0/Dockerfile -c OracleDatabase/SingleInstance/dockerfiles/19.3.0 --cache=false --destination=paulokinho2005/kaniko:v.0.0.2
+                    '''
+                }
+            }
+        }
+    }
+}
